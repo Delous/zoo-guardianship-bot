@@ -31,6 +31,14 @@ def question_keyboard(answers: list[Answer]) -> InlineKeyboardMarkup:
     )
 
 
+def selected_answer_keyboard(answer: Answer) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=f"Выбрано: вариант {answer.position}", callback_data="quiz:answered")],
+        ]
+    )
+
+
 def result_keyboard(share_url: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[

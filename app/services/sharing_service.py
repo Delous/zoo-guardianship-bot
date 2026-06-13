@@ -13,5 +13,5 @@ class SharingService:
 
     async def build_share_url(self, animal: Animal) -> str:
         template = await self.animals.get_static_text("share_text_template")
-        text = template.format(animal_name=animal.name, bot_link=self.bot_link)
+        text = template.format(animal_name=animal.name)
         return f"https://t.me/share/url?url={quote_plus(self.bot_link)}&text={quote_plus(text)}"

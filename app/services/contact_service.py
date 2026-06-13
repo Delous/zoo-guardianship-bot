@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+from html import escape
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import User
 
 from app.database.models import Animal
@@ -23,7 +25,7 @@ class ContactService:
         user: User,
         animal: Animal | None,
         question_text: str,
-    ) -> None:
+    ) -> bool:
         created_at = await self.contacts.create_request(
             telegram_user_id=user.id,
             full_name=user.full_name,
@@ -33,14 +35,20 @@ class ContactService:
         )
         username = f"@{user.username}" if user.username else "не указан"
         animal_name = animal.name if animal else "результат ещё не получен"
-        await bot.send_message(
-            self.admin_chat_id,
-            "Новое обращение по программе опеки\n\n"
-            f"Пользователь: {user.full_name}\n"
-            f"Username: {username}\n"
-            f"Telegram ID: {user.id}\n"
-            f"Итоговое животное: {animal_name}\n"
-            f"Дата обращения: {created_at}\n\n"
-            f"Вопрос:\n{question_text}",
-        )
+        try:
+            await bot.send_message(
+                self.admin_chat_id,
+                "Новое обращение по программе опеки\n\n"
+                f"Пользователь: {escape(user.full_name)}\n"
+                f"Username: {escape(username)}\n"
+                f"Telegram ID: {user.id}\n"
+                f"Итоговое животное: {escape(animal_name)}\n"
+                f"Дата обращения: {escape(created_at)}\n\n"
+                f"Вопрос:\n{escape(question_text)}",
+            )
+        except TelegramAPIError:
+            logger.exception("Could not send contact request to admin_chat_id=%s", self.admin_chat_id)
+            return False
+
         logger.info("Contact request sent to admin for user_id=%s", user.id)
+        return True

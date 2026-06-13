@@ -5,10 +5,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, User
 
 from app.bot.states import FeedbackStates, QuizStates
-from app.keyboards.inline import feedback_rating_keyboard, feedback_skip_keyboard
+from app.keyboards.inline import completed_keyboard, feedback_rating_keyboard, feedback_skip_keyboard, result_keyboard
 from app.repositories.animal_repository import AnimalRepository
 from app.services.feedback_service import FeedbackService
 from app.services.quiz_service import QuizService
+from app.services.sharing_service import SharingService
 
 
 router = Router()
@@ -43,6 +44,7 @@ async def _save_feedback(
     comment: str | None,
     feedback_service: FeedbackService,
     quiz_service: QuizService,
+    sharing_service: SharingService,
     animal_repository: AnimalRepository,
 ) -> None:
     data = await state.get_data()
@@ -51,7 +53,11 @@ async def _save_feedback(
     animal = await animal_repository.get_by_id(progress.result_animal_id) if progress and progress.result_animal_id else None
     await feedback_service.save_feedback(user, animal, rating, comment)
     await state.set_state(QuizStates.completed)
-    await message.answer(await animal_repository.get_static_text("feedback_success"))
+    if animal:
+        reply_markup = result_keyboard(await sharing_service.build_share_url(animal))
+    else:
+        reply_markup = completed_keyboard()
+    await message.answer(await animal_repository.get_static_text("feedback_success"), reply_markup=reply_markup)
 
 
 @router.message(FeedbackStates.waiting_comment, F.text)
@@ -60,9 +66,19 @@ async def feedback_comment(
     state: FSMContext,
     feedback_service: FeedbackService,
     quiz_service: QuizService,
+    sharing_service: SharingService,
     animal_repository: AnimalRepository,
 ) -> None:
-    await _save_feedback(message, message.from_user, state, message.text, feedback_service, quiz_service, animal_repository)
+    await _save_feedback(
+        message,
+        message.from_user,
+        state,
+        message.text,
+        feedback_service,
+        quiz_service,
+        sharing_service,
+        animal_repository,
+    )
 
 
 @router.callback_query(FeedbackStates.waiting_comment, F.data == "feedback:skip")
@@ -71,7 +87,17 @@ async def feedback_skip(
     state: FSMContext,
     feedback_service: FeedbackService,
     quiz_service: QuizService,
+    sharing_service: SharingService,
     animal_repository: AnimalRepository,
 ) -> None:
-    await _save_feedback(callback.message, callback.from_user, state, None, feedback_service, quiz_service, animal_repository)
+    await _save_feedback(
+        callback.message,
+        callback.from_user,
+        state,
+        None,
+        feedback_service,
+        quiz_service,
+        sharing_service,
+        animal_repository,
+    )
     await callback.answer()

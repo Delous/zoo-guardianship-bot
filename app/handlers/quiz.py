@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import logging
 from html import escape
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.bot.states import QuizStates
 from app.database.models import Question
-from app.keyboards.inline import question_keyboard
+from app.keyboards.inline import question_keyboard, selected_answer_keyboard
 from app.repositories.animal_repository import AnimalRepository
 from app.services.quiz_service import QuizService
 from app.services.result_service import ResultService
@@ -17,6 +19,7 @@ from app.handlers.result import send_result
 
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 async def send_question(message: Message, question: Question, animal_repository: AnimalRepository) -> None:
@@ -32,6 +35,11 @@ async def send_question(message: Message, question: Question, animal_repository:
         f"{answers_text}",
         reply_markup=question_keyboard(question.answers),
     )
+
+
+@router.callback_query(F.data == "quiz:answered")
+async def already_answered(callback: CallbackQuery) -> None:
+    await callback.answer("Ответ уже принят")
 
 
 @router.callback_query(F.data == "quiz:start")
@@ -90,7 +98,18 @@ async def accept_answer(
     animal_repository: AnimalRepository,
 ) -> None:
     answer_id = callback.data.split(":", maxsplit=2)[2]
+    current_question = await quiz_service.get_current_question(callback.from_user.id)
+    selected_answer = None
+    if current_question:
+        selected_answer = next((answer for answer in current_question.answers if answer.id == answer_id), None)
+
     finished = await quiz_service.accept_answer(callback.from_user.id, answer_id)
+
+    if selected_answer:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=selected_answer_keyboard(selected_answer))
+        except TelegramBadRequest as error:
+            logger.warning("Could not update answered question keyboard: %s", error)
 
     if finished:
         await state.set_state(QuizStates.completed)
