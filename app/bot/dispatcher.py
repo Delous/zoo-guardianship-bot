@@ -29,7 +29,7 @@ def build_dispatcher(settings: Settings) -> Dispatcher:
     contacts = ContactRepository(settings.database_path)
     feedback_repo = FeedbackRepository(settings.database_path)
 
-    media_dir = Path(__file__).resolve().parents[2] / "media" / "animals"
+    media_dir = Path(__file__).resolve().parents[1] / "media"
 
     dp["animal_repository"] = animals
     dp["quiz_service"] = QuizService(questions, users)
