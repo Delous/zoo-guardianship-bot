@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -19,10 +21,15 @@ router = Router()
 
 async def send_question(message: Message, question: Question, animal_repository: AnimalRepository) -> None:
     title = await animal_repository.get_static_text("quiz_title")
+    answers_text = "\n".join(
+        f"{answer.position}. {escape(answer.text)}"
+        for answer in question.answers
+    )
     await message.answer(
-        f"{title}\n\n"
+        f"{escape(title)}\n\n"
         f"Вопрос {question.position}\n"
-        f"{question.text}",
+        f"{escape(question.text)}\n\n"
+        f"{answers_text}",
         reply_markup=question_keyboard(question.answers),
     )
 

@@ -25,7 +25,7 @@ def continue_or_restart_keyboard() -> InlineKeyboardMarkup:
 def question_keyboard(answers: list[Answer]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=answer.text, callback_data=f"quiz:answer:{answer.id}")]
+            [InlineKeyboardButton(text=f"Вариант {answer.position}", callback_data=f"quiz:answer:{answer.id}")]
             for answer in answers
         ]
     )
